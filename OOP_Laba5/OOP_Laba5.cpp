@@ -38,6 +38,9 @@ public:
     virtual void printInf2() {
         printf("Point object with coordinates: %d, %d, %d\n", x, y, z);
     }
+    virtual void printInf3() {
+        printf("Point object with coordinates: %d, %d, %d\n", x, y, z);
+    }
     virtual string classname() {
         return "Point";
     }
@@ -50,7 +53,7 @@ public:
 };
 
 class UndefinedPoint : public Point {
-private:
+public:
     int range;
 public:
     UndefinedPoint() : Point(), range(0) {
@@ -65,9 +68,6 @@ public:
     ~UndefinedPoint() {
         printf("%d, %d, %d, Range = %d\n", x, y, z, range);
         printf("~UndefinedPoint()\n");
-    }
-    void printInf() {
-        printf("UndefinedPoint object with coordinates: %d, %d, %d\n", x, y, z);
     }
     void printInf2() override {
         printf("UndefinedPoint object with coordinates : %d, %d, %d\n", x, y, z);
@@ -100,14 +100,22 @@ int main() {
     }
     printf("Виртуальные методы:\n");
     {
+        Point p;
+        UndefinedPoint p2;
+
+        p.printInf3(); // Виртуальный базовый метод
+        p2.printInf3(); // Виртуальный наследуемый метод
+
+        /*
         Point* p = new UndefinedPoint();
         p->printInf(); // Наследуемый метод, вызовется метод базового класса
         p->printInf2(); // Перекрываемый метод, вызовется метод производного класса
-        delete p;
+        delete p; // Правильное удаление благодаря виртуальному дестрактору
         UndefinedPoint* p2 = new UndefinedPoint();
         p2->printInf(); // Наследуемый метод, вызовется метод производного класса
         p2->printInf2();
         delete p2;
+        */
     }
     printf("Проверка на принадлежность классу:\n");
     {
@@ -123,7 +131,9 @@ int main() {
         print2(*p); // Здесь объект передаётся по ссылке, всё нормально
         print2(*p2);
 
-        if (p->isA("UndefinedPoint")) { printf("Yes\n"); }
+        Point p3;
+
+        if (p3.isA("UndefinedPoint")) { printf("Yes\n"); } // Метод isA отличается тем, что он проверяет является ли объект потомком выбранного класса
         else { printf("No\n"); }
 
         if (p2->isA("UndefinedPoint")) { printf("Yes\n"); }
@@ -131,15 +141,55 @@ int main() {
 
         delete p, p2;
     }
+    printf("Опасное приведение типов + isA:\n");
+    {
+        
+        Point p;
+        Point* p2 = &p;
+        if (p2->isA("Point")) {
+            UndefinedPoint* p3 = static_cast<UndefinedPoint*>(p2); // Ошибки не возникает
+            cout << p3->range << endl << p3->classname() << endl; // Но range обращается к неинициализированнной памяти
+        }
+         
+        Point* p4 = new Point();
+        if (p4->isA("Point")) {
+            UndefinedPoint* p5 = static_cast<UndefinedPoint*>(p4);
+            cout << p5->range << endl << p5->classname() << endl;
+
+        }
+        delete p4;
+        
+        Point* p6 = new UndefinedPoint(); // Здесь всё нормально
+        if (p6->isA("UndefinedPoint")) {
+            UndefinedPoint* p7 = static_cast<UndefinedPoint*>(p6);
+            cout << p7->range << endl << p7->classname() << endl;
+
+        }
+        delete p6;
+    }
     printf("Dynamic cast:\n");
     {
+        Point p;
+        Point* p2 = &p;
+        UndefinedPoint* p21 = dynamic_cast<UndefinedPoint*>(p2); // p21 будет nullptr т.к. нельзя приводить указатель на предка к указателю на потомка
+        if (p21 != nullptr) { cout << p21->range << endl << p21->classname() << endl; }
+        else { printf("p21 was nullptr\n"); }
+
+        Point* p3 = new Point();
+        UndefinedPoint* p31 = dynamic_cast<UndefinedPoint*>(p3);
+        if (p31 != nullptr) { cout << p31->range << endl << p31->classname() << endl; }
+        else { printf("p31 was nullptr\n"); }
+        delete p3;
+
+        Point* p4 = new Point();
+        Point* p41 = dynamic_cast<Point*>(p4); // Здесь всё нормально
+        if (p41 != nullptr) { cout << p41->classname() << endl; }
+        else { printf("p41 was nullptr\n"); }
+        delete p4;
+
 
     }
     printf("Безопасное приведение типов вручную\n");
-    {
-
-    }
-    printf("Опасное приведение типов + isA:\n");
     {
 
     }
