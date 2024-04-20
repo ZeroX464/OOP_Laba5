@@ -3,17 +3,33 @@ using namespace std;
 #include <random>
 #include <iostream>
 
-class Number {
-private:
+class Number1 {
+protected:
 	int value;
 public:
-	Number() : value(0) {}
-	Number(int value) : value(value) {}
-	Number(const Number& s) : value(s.value) {}
-	~Number() {}
+	Number1() : value(0) {}
+	Number1(int value) : value(value) {}
+	Number1(const Number1& s) : value(s.value) {}
+	~Number1() {}
+    void someMethod1() { someMethod2(); }
+    virtual void someMethod2() {}
+    virtual void someMethod3() { printf("Number1 someMethod3\n"); }
 	void printInf() {
-		printf("Number object with value: %d\n", value);
+		printf("Number1 object with value: %d\n", value);
 	}
+};
+
+class Number2 : public Number1 {
+public:
+    Number2() {}
+    Number2(int value) : Number1(value) {}
+    Number2(const Number2& s) : Number1(s) {}
+    ~Number2() {}
+    void someMethod2() { printf("I'm override\n"); }
+    void someMethod3() { printf("Number2 someMethod3\n"); }
+    void printInf() {
+        printf("Number2 object with value: %d\n", value);
+    }
 };
 
 class Point {
@@ -151,12 +167,40 @@ public:
 
 void func1(Base obj) { // Передача по значению (копия)
     printf("func1(Base obj)\n");
+    //Desc& obj2 = dynamic_cast<Desc&>(obj);
 }
 void func2(Base* obj) {
     printf("func2(Base* obj)\n");
 };
 void func3(Base& obj) {
     printf("func3(Base& obj)\n");
+}
+
+Base func11() {
+    Base b;
+    return b;
+}
+Base* func21() {
+    Base b;
+    Base* b1 = &b;
+    return b1;
+}
+Base& func31() {
+    Base b;
+    return b;
+}
+Base func41() {
+    Base* b1 = new Base();
+    Base b2 = b1;
+    delete b1;
+    return b2;
+}
+Base* func51() {
+    Base* b = new Base();
+    return b;
+}
+Base& func61() {
+    return *new Base();
 }
 
 int main() {
@@ -208,7 +252,8 @@ int main() {
         if (p2->isA("UndefinedPoint")) { printf("Yes\n"); }
         else { printf("No\n"); }
 
-        delete p, p2;
+        delete p;
+        delete p2;
     }
     printf("Опасное приведение типов + isA:\n");
     {
@@ -317,16 +362,50 @@ int main() {
     {
         Base* b = new Base();
         Desc* d = new Desc();
-        func1(b);
+        func1(*b);
         func2(b);
         func3(*b);
-        func1(d); // Происходит срезка объекта до Base
+        func1(*d); // Происходит срезка объекта до Base
         func2(d);
         func3(*d);
+        delete b;
+        delete d;
+        //delete b, d; // Некорректно работает
+        printf("-------------------------\n");
+        Base b2;
+        Desc d2;
+        func1(b2);
+        Base* b3 = &b2;
+        func2(b3);
+        func3(b2);
+        func1(d2); // Происходит срезка объекта до Base
+        Desc* d3 = &d2;
+        func2(d3);
+        func3(d2);
     }
     printf("Проверка механизма возврата объектов как параметров в функции:\n");
     {
+        // Статические объекты удаляются после выполнения функции
+        const Base& b1 = func11();
+        Base* b2 = func21();
+        Base* b3 = &func31();
 
+        const Base& b4 = func41();
+        Base* b5 = func51();
+        Base* b6 = &func61();
+        delete b5;
+        delete b6;
+    }
+    printf("Ответы:\n");
+    {
+        Number1 n1;
+        Number2 n2;
+        n2.someMethod1();
+
+        Number1* n3 = &n1;
+        Number2* n4 = &n2;
+        n3->someMethod3();
+        n4->someMethod3();
     }
 	return 0;
 }
