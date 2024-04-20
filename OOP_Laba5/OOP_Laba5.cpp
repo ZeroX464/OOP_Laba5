@@ -32,6 +32,11 @@ public:
 	virtual ~Point() {
         printf("~Point()\n");
     }
+    void move(int dx, int dy, int dz) {
+        x += dx;
+        y += dy;
+        z += dz;
+    }
 	void printInf() {
 		printf("Point object with coordinates: %d, %d, %d\n", x, y, z);
 	}
@@ -88,6 +93,70 @@ void print1(Point obj) {
 }
 void print2(const Point& obj) {
     cout << "Classname: " << obj.classname2() << endl;
+}
+
+void f1(shared_ptr<Point> ptr) { // Копирование shared_ptr
+    ptr = make_shared<Point>(5,5,5);
+    ptr->move(5, 5, 5);
+    ptr->printInf();
+}
+void f2(const shared_ptr<Point>& ptr) { // Указатель const
+    //ptr = make_shared<Point>();
+    ptr->move(5, 5, 5);
+    ptr->printInf();
+}
+void f3(shared_ptr<Point>& ptr) {
+    ptr.reset();
+    ptr = make_shared<Point>(7, 7, 7);
+}
+unique_ptr<Point> f4(unique_ptr<Point> ptr) { // Передача по перемещению
+    return ptr; // Возрат владения к вызвавшему функцию указателю
+}
+void f5(unique_ptr<Point>& ptr) {
+    ptr->printInf();
+}
+
+class Base {
+public:
+    Base() {
+        printf("Base()\n");
+    }
+    Base(Base* obj) {
+        printf("Base(Base *obj)\n");
+    }
+    Base(Base& obj) {
+        printf("Base(Base &obj)\n");
+    }
+    virtual ~Base() {
+        printf("~Base()\n");
+    }
+};
+
+class Desc : public Base {
+public:
+    Desc() {
+        printf("Desc()\n");
+    }
+    Desc(Desc* obj) {
+        printf("Desc(Desc *obj)\n");
+    }
+    Desc(Desc& obj) {
+        printf("Desc(Desc& obj)\n");
+    }
+    ~Desc() {
+        printf("~Desc()\n");
+    }
+
+};
+
+void func1(Base obj) { // Передача по значению (копия)
+    printf("func1(Base obj)\n");
+}
+void func2(Base* obj) {
+    printf("func2(Base* obj)\n");
+};
+void func3(Base& obj) {
+    printf("func3(Base& obj)\n");
 }
 
 int main() {
@@ -167,7 +236,7 @@ int main() {
         }
         delete p6;
     }
-    printf("Dynamic cast:\n");
+    printf("Dynamic cast:\n"); // Требуется хотя бы 1 виртуальный метод в классе, к которому приводится указатель, чтобы использовать RTTI(Run-Time Type Information)
     {
         Point p;
         Point* p2 = &p;
@@ -189,17 +258,71 @@ int main() {
 
 
     }
-    printf("Безопасное приведение типов вручную\n");
+    printf("Безопасное приведение типов вручную:\n");
     {
+        Point* p = new UndefinedPoint();
+        if (p->isA("UndefinedPoint")) {
+            UndefinedPoint* p2 = static_cast<UndefinedPoint*>(p);
+        }
+        delete p;
 
+        Point* p3 = new UndefinedPoint();
+        if (p3->classname2() == "UndefinedPoint") {
+            UndefinedPoint* p4 = static_cast<UndefinedPoint*>(p3);
+        }
+        delete p3;
     }
     printf("Умные указатели:\n");
     {
+        // Без make_ shared/unique
+        unique_ptr<Point> p(new Point());
+        // unique_ptr<Point> p11(p); // Ошибка т.к. unique_ptr уникальный указатель
 
+        p.reset(); // После удаления unique_ptr сам объект тоже удаляется
+        p = nullptr; // Второй способ удаления
+        // А вообще их удалять не обязательно т.к. они удаляются после выхода из области видимости
+
+        unique_ptr<Point> p11(new Point());
+        unique_ptr<Point> p12 = move(p11); // Перемещение владение new Point от p11 к p12
+
+        Point* p2 = new Point();
+        shared_ptr<Point> p3(p2);
+        shared_ptr<Point> p4(p3); // Копирование shared_prt
+        shared_ptr<Point> p5 = p4; // Второй способ копирования
+        p2 = nullptr; // p2 удалять не нужно т.к. это сделают shared_ptr
+        // Здесь new Point владеют p3, p4, p5
+
+        weak_ptr<Point> p6 = p5; // Указывает, но не владеет (наблюдатель)
+        p6.lock(); // А теперь владеет и становится shared_ptr
+
+        // С make_ shared/unique
+        auto p7 = make_unique<Point>(); // auto означает, что компилятор сам подберёт тип
+        unique_ptr<Point> p8 = make_unique<Point>(); // Это более экономичный вариант для памяти
+        shared_ptr<Point> p9 = make_shared<Point>(); // Т.к. память выделяется 1 раз сразу на объект и указатель вместе
+
+        // Передача умных указателей в функции
+        f1(make_shared<Point>());
+        f2(make_shared<Point>());
+
+        auto p10 = make_shared<Point>();
+        f3(p10);
+        p10->printInf(); // Владелец поменялся
+
+        unique_ptr<Point> p13 = make_unique<Point>();
+        p13 = f4(move(p13));
+        f5(p13);
+        p13.reset();
     }
     printf("Проверка механизма передачи объектов как параметров в функции:\n");
     {
-
+        Base* b = new Base();
+        Desc* d = new Desc();
+        func1(b);
+        func2(b);
+        func3(*b);
+        func1(d); // Происходит срезка объекта до Base
+        func2(d);
+        func3(*d);
     }
     printf("Проверка механизма возврата объектов как параметров в функции:\n");
     {
